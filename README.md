@@ -17,6 +17,9 @@ decide(id) {
 }
 ```
 
+<img width="1706" height="1222" alt="image" src="https://github.com/user-attachments/assets/24874716-7efa-4234-a875-ecbff97a522d" />
+
+
 - **Self-contained C99 core**: no dependencies; safetensors and JSON parsing included; one file per concern.
 - **Fast everywhere**: WebAssembly SIMD128, x86 SSE2 and ARM NEON kernels, int8/int4 weights, batched inference, and a
   load-time **autotune** that picks the fastest kernel on the host it runs on.
