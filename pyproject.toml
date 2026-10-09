@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neural-amx"
+version = "1.0.0"
+description = "Convert PyTorch, TensorFlow/Keras, MLX and ONNX models for fast, deterministic inference in AMX Mod X"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24"]
+
+[project.optional-dependencies]
+torch = ["torch>=2.1"]
+tensorflow = ["tensorflow>=2.16"]
+mlx = ["mlx>=0.20"]
+onnx = ["onnx>=1.15"]
+
+[project.scripts]
+neural-amx = "neural_amx.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["python"]
+include = ["neural_amx*"]
