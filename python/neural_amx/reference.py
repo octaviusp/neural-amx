@@ -301,6 +301,10 @@ class Runner:
             L["b"] = self._vec(tensors, spec.get("shift"), n_in, 0.0)
         elif op == "leaky_relu":
             L["alpha"] = _f(spec.get("alpha", 0.01))
+        elif op == "transpose":
+            L["rows"], L["cols"] = int(spec["rows"]), int(spec["cols"])
+            if L["rows"] * L["cols"] != n_in:
+                raise ValueError(f"transpose {L['rows']}x{L['cols']} does not match input {n_in}")
         elif op not in ("relu", "sigmoid", "tanh", "gelu", "gelu_tanh", "silu", "softmax"):
             raise ValueError(f"unknown op '{op}'")
 
@@ -383,6 +387,8 @@ class Runner:
             return gelu_tanh(x)
         if op == "silu":
             return (x * sigmoidf(x)).astype(F)
+        if op == "transpose":
+            return x.reshape(len(x), L["rows"], L["cols"]).transpose(0, 2, 1).reshape(len(x), -1).copy()
         if op == "affine":
             return (x * L["g"][None, :] + L["b"][None, :]).astype(F)
         if op == "layernorm":

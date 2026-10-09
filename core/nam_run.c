@@ -98,6 +98,10 @@ static void elementwise(const nam_layer *L, const float *x, float *y) {
     case NAM_OP_AFFINE: for (int k = 0; k < n; k++) y[k] = x[k] * L->g[k] + L->b[k]; break;
     case NAM_OP_LAYERNORM: layernorm_row(L, x, y); break;
     case NAM_OP_SOFTMAX: softmax_row(x, n, y); break;
+    case NAM_OP_TRANSPOSE:
+      for (int r = 0; r < L->trows; r++)
+        for (int c = 0; c < L->tcols; c++) y[c * L->trows + r] = x[r * L->tcols + c];
+      break;
     default: break;
   }
 }

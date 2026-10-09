@@ -270,6 +270,7 @@ static const struct { const char *name; nam_op op; } kOps[] = {
   {"layernorm", NAM_OP_LAYERNORM}, {"affine", NAM_OP_AFFINE}, {"batchnorm", NAM_OP_AFFINE}, {"relu", NAM_OP_RELU},
   {"leaky_relu", NAM_OP_LEAKY_RELU}, {"sigmoid", NAM_OP_SIGMOID}, {"tanh", NAM_OP_TANH}, {"gelu", NAM_OP_GELU},
   {"gelu_tanh", NAM_OP_GELU_TANH}, {"silu", NAM_OP_SILU}, {"swish", NAM_OP_SILU}, {"softmax", NAM_OP_SOFTMAX},
+  {"transpose", NAM_OP_TRANSPOSE},
 };
 
 static const char *op_name(nam_op op) {
@@ -352,6 +353,11 @@ static int build_layer(nam_layer *L, const nj *spec, const nst_file *f, int inde
     if (!load_vector(&L->b, f, index, nj_str(spec, "shift", NULL), in, 1, 0.0f, e)) return 0;
   } else if (L->op == NAM_OP_LEAKY_RELU) {
     L->alpha = (float)nj_num(spec, "alpha", 0.01);
+  } else if (L->op == NAM_OP_TRANSPOSE) { // channels-last <-> channels-first for conv models from Keras/MLX
+    L->trows = (int)nj_num(spec, "rows", 0);
+    L->tcols = (int)nj_num(spec, "cols", 0);
+    if (L->trows <= 0 || L->tcols <= 0 || L->trows * L->tcols != in)
+      return fail(e, "layer %d: transpose %dx%d does not match input %d", index, L->trows, L->tcols, in);
   }
   return 1;
 }

@@ -10,7 +10,7 @@
 typedef enum {
   NAM_OP_DENSE, NAM_OP_CONV1D, NAM_OP_GRU, NAM_OP_LAYERNORM, NAM_OP_AFFINE,
   NAM_OP_RELU, NAM_OP_LEAKY_RELU, NAM_OP_SIGMOID, NAM_OP_TANH, NAM_OP_GELU, NAM_OP_GELU_TANH, NAM_OP_SILU,
-  NAM_OP_SOFTMAX,
+  NAM_OP_SOFTMAX, NAM_OP_TRANSPOSE,
 } nam_op;
 
 // A weight matrix rows x cols prepared for the kernels: rows padded to cols_pad (multiple of 16) with zeros.
@@ -32,6 +32,7 @@ typedef struct {
   nam_matrix h;                // gru recurrent weights
   int in_ch, out_ch, kernel, stride, pad, len_in, len_out; // conv1d
   int hidden, state_offset;    // gru
+  int trows, tcols;            // transpose: rows x cols -> cols x rows
   float *g, *b;                // layernorm gamma/beta, affine scale/shift
 } nam_layer;
 

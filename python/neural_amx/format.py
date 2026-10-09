@@ -14,7 +14,7 @@ import numpy as np
 FORMAT_VERSION = 1
 WEIGHTED_OPS = ("dense", "conv1d", "gru")
 ACTIVATIONS = ("relu", "leaky_relu", "sigmoid", "tanh", "gelu", "gelu_tanh", "silu", "softmax")
-OPS = WEIGHTED_OPS + ("layernorm", "affine", "batchnorm", "flatten", "identity") + ACTIVATIONS
+OPS = WEIGHTED_OPS + ("layernorm", "affine", "batchnorm", "transpose", "flatten", "identity") + ACTIVATIONS
 
 _DTYPES = {"F32": np.float32, "F16": np.float16, "F64": np.float64, "I8": np.int8, "U8": np.uint8, "I16": np.int16,
            "I32": np.int32, "I64": np.int64, "BOOL": np.bool_}
