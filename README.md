@@ -44,6 +44,12 @@ decide(id) {
    model in `addons/amxmodx/data/neural/`; include `amxx/neural_amx.inc` in your plugin.
 3. **Run** it: `neural_run`, or `neural_run_batch` for many agents in one call. See `examples/`.
 
+## Demo: MNIST wall
+
+`examples/mnist_wall/`: `say /mnist` opens a canvas on a wall, you draw a digit with bullets, the network reads it live
+(HUD top 3) and announces it in the chat. A plugin-driven bot shot 30 MNIST test digits in a real CS 1.6 server:
+30/30 recognized, with crosshair points and with real bullet impacts.
+
 ## Converters
 
 | Source | API | Notes |
@@ -137,7 +143,7 @@ Quantized weights are `I8` (`[out, in]`) or packed int4 as `U8` (`[out, ceil(in/
 | `core/` | C99 runtime: `nam.h` (API), kernels, runner, loader, safetensors/JSON parsers, SIMD and math headers |
 | `amxx/` | AMX Mod X module, `neural_amx.inc`, build script |
 | `python/neural_amx/` | format, reference (the specification), quantize, QAT, converters, CLI |
-| `tests/`, `bench/`, `examples/` | bit-exactness and converter tests, benchmarks, a training script and a bot plugin |
+| `tests/`, `bench/`, `examples/` | bit-exactness and converter tests, benchmarks, a training script, a bot plugin and the MNIST wall demo |
 
 ## License
 
