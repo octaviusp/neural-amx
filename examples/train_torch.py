@@ -1,6 +1,6 @@
 """Example: train a tiny bot policy in PyTorch with int4 QAT and export it for AMX Mod X.
 
-    uv run --with torch --with numpy --with /path/to/neural-amx python examples/train_torch.py policy.safetensors
+    uv run --with torch --with "neural-amx @ git+https://github.com/octaviusp/neural-amx" python examples/train_torch.py policy.safetensors
 
 The features and labels here are synthetic; record yours from the game with the same feature code the plugin uses.
 """

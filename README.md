@@ -28,7 +28,7 @@ decide(id) {
 
 1. **Convert** (Python ≥ 3.10):
    ```sh
-   pip install "neural-amx[torch]"   # or [tensorflow], [mlx], [onnx]; from a checkout: pip install .
+   pip install "neural-amx[torch] @ git+https://github.com/octaviusp/neural-amx"   # or [tensorflow], [mlx], [onnx]
    ```
    ```python
    import neural_amx as nam
