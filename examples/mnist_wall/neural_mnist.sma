@@ -11,7 +11,8 @@
 // Admin/test: mnist_open <id>, mnist_guess <id>, mnist_clear <id>; public mnist_api_* functions for callfunc.
 //
 // The renderer below (render_canvas) is the one examples/mnist_wall/train.py trains on: keep them identical.
-// Needs the neural-amx module (https://github.com/octaviusp/neural-amx). License: MIT.
+// Needs the neural-amx module (https://github.com/octaviusp/neural-amx). Optional config: <configsdir>/neural-mnist.cfg.
+// License: MIT.
 
 #include <amxmodx>
 #include <amxmisc>
@@ -57,11 +58,11 @@ public plugin_precache()
 public plugin_init()
 {
 	register_plugin(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR);
-	g_cvar_model = register_cvar("mnist_model", "neural/mnist.safetensors");
-	g_cvar_cell = register_cvar("mnist_cell", "4.0");
-	g_cvar_mode = register_cvar("mnist_mode", "0");
-	g_cvar_live = register_cvar("mnist_live", "1");
-	g_cvar_debug = register_cvar("mnist_debug", "0");
+	g_cvar_model = create_cvar("mnist_model", "neural/mnist.safetensors", FCVAR_NONE, "Model file under the AMX Mod X data directory");
+	g_cvar_cell = create_cvar("mnist_cell", "4.0", FCVAR_NONE, "World units per canvas cell (the canvas is 28 cells wide)", true, 2.0, true, 8.0);
+	g_cvar_mode = create_cvar("mnist_mode", "0", FCVAR_NONE, "0: bullet impacts, 1: exact crosshair point", true, 0.0, true, 1.0);
+	g_cvar_live = create_cvar("mnist_live", "1", FCVAR_NONE, "Show the top 3 on the HUD after every shot", true, 0.0, true, 1.0);
+	g_cvar_debug = create_cvar("mnist_debug", "0", FCVAR_NONE, "Print every shot's canvas position", true, 0.0, true, 1.0);
 	register_clcmd("say", "CmdSay");
 	register_clcmd("say_team", "CmdSay");
 	register_concmd("mnist_open", "CmdAdmin", ADMIN_RCON, "<player id> - open a canvas where the player looks");
@@ -73,6 +74,15 @@ public plugin_init()
 
 public plugin_cfg()
 {
+	// a server or mod pack may ship neural-mnist.cfg next to the other configs
+	new cfg[160];
+	get_configsdir(cfg, charsmax(cfg));
+	add(cfg, charsmax(cfg), "/neural-mnist.cfg");
+	if (file_exists(cfg))
+	{
+		server_cmd("exec %s", cfg);
+		server_exec();
+	}
 	new file[128];
 	get_pcvar_string(g_cvar_model, file, charsmax(file));
 	g_model = neural_load(file, NEURAL_STORED);

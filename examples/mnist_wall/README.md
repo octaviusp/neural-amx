@@ -16,13 +16,19 @@ the network's top 3 after every shot, and `say /mnist ok` announces the answer i
 Bullet holes are dots, not pen strokes, so `train.py` trains on *shot drawings*: each MNIST digit becomes 20-100 random
 dots sampled from its ink (rotation, width and stray-shot augmentation), rendered by exactly the plugin's renderer.
 
+## Ready-made model
+
+`mnist.safetensors` (int8, 239 KB, sha256 `8c23c4fb105117ad9d8e30410fa52c778c410cc6bf59b90a66030aa6c7cef312`) is the output
+of `train.py` as committed. Its weights are derived from the MNIST database (Yann LeCun, Corinna Cortes, Christopher
+J. C. Burges), distributed under CC BY-SA 3.0; the model file is shared under the same license. Code in this folder is MIT.
+
 ## Run it
 
 ```sh
 uv run --python 3.12 --with torch --with numpy --with "neural-amx @ git+https://github.com/octaviusp/neural-amx" \
     python examples/mnist_wall/train.py build/mnist        # ~4 min on Apple Silicon (MPS); downloads MNIST once
 ```
-Copy `build/mnist/mnist.safetensors` to `addons/amxmodx/data/neural/`, install the neural-amx module, compile
+Copy `mnist.safetensors` (or your own `build/mnist/mnist.safetensors`) to `addons/amxmodx/data/neural/`, install the neural-amx module, compile
 `neural_mnist.sma` with `amxx/neural_amx.inc`, and add it to `plugins.ini`.
 
 | cvar | default | meaning |
