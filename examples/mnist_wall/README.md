@@ -1,7 +1,8 @@
 # MNIST wall: draw a digit with bullets, a neural network reads it
 
-`say /mnist` opens a 28x28 canvas on the wall you are looking at (a green frame). Shoot a digit inside it; the HUD shows
-the network's top 3 after every shot, and `say /mnist ok` announces the answer in the chat:
+`say /mnist` opens a 28x28 canvas on the wall you are looking at (a green frame). Shoot a digit inside it; the HUD keeps
+the network's top 3 on screen while you draw, the server console prints each reading
+(`[MNIST] Player PREDICTED: 7 (93.1%), 1 (4.0%), 9 (1.2%) | 14 shots`), and `say /mnist ok` announces the answer in the chat:
 `[MNIST] Player drew a 7 (93% sure).` `say /mnist clear` erases, `say /mnist off` closes.
 
 ## How it works
@@ -36,7 +37,7 @@ Copy `mnist.safetensors` (or your own `build/mnist/mnist.safetensors`) to `addon
 | `mnist_model` | `neural/mnist.safetensors` | model under the data directory |
 | `mnist_cell` | `4.0` | units per canvas cell (the canvas is 28 cells wide) |
 | `mnist_mode` | `0` | 0: bullet impacts, 1: crosshair point |
-| `mnist_live` | `1` | HUD top 3 after every shot |
+| `mnist_live` | `1` | top 3 on the HUD (kept on screen while the canvas is open) and a `PREDICTED:` line in the server console after each burst of shots |
 | `mnist_debug` | `0` | print every shot's canvas position and whether it was kept |
 
 Admin/test commands: `mnist_open <id>`, `mnist_guess <id>`, `mnist_clear <id>`, `mnist_status` (the loaded model); other plugins can call the public

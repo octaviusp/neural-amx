@@ -3,11 +3,12 @@
 //   say /mnist          open a 28x28 canvas on the wall you are looking at (a frame is drawn around it)
 //   say /mnist ok       the network's answer goes to the chat
 //   say /mnist clear    erase the drawing          say /mnist off    close the canvas
-// While the canvas is open, every shot that lands inside it is a dot, and the HUD shows the network's top 3 live.
+// While the canvas is open, every shot that lands inside it is a dot; the HUD keeps the network's top 3 on screen and
+// the server console prints each reading as "[MNIST] <name> PREDICTED: 3 (91.2%), 8 (5.0%), 5 (2.1%) | 14 shots".
 //
 // cvars: mnist_model "neural/mnist.safetensors" (under the data dir), mnist_cell 4.0 (units per canvas cell),
 //        mnist_mode 0 (0 = bullet impacts, where the decals are; 1 = exact crosshair point, ignores spread),
-//        mnist_live 1 (HUD after every shot), mnist_debug 0 (1: print why each shot is kept or dropped).
+//        mnist_live 1 (live HUD + console line), mnist_debug 0 (1: print why each shot is kept or dropped).
 // Admin/test: mnist_open <id>, mnist_guess <id>, mnist_clear <id>, mnist_status; public mnist_api_* functions for callfunc.
 //
 // The renderer below (render_canvas) is the one examples/mnist_wall/train.py trains on: keep them identical.
@@ -33,6 +34,11 @@ const Float:BRUSH = 1.7;           // dot paints full intensity within 0.7 cells
 const Float:BOX = 18.0;            // dots are fitted into an 18-cell box, then centered on the center of mass
 const Float:PLANE_TOLERANCE = 6.0; // a hit belongs to the canvas when it is this close to its plane
 const TASK_FRAME = 6100;           // + player id
+const TASK_READ = 6200;            // + player id: one reading per burst of shots
+const Float:READ_DELAY = 0.15;     // a burst of shots (automatic fire, shotgun pellets) gives one reading
+const Float:HUD_HOLD = 6.0;        // the reading stays this long...
+const Float:HUD_RESEND = 4.0;      // ...and is sent again before it expires while the canvas is open
+const Float:HUD_Y = 0.72;
 
 new Neural:g_model = Invalid_Neural;
 new g_beam;
@@ -44,6 +50,9 @@ new Float:g_u[MAX_PLAYERS + 1][3];      // canvas right
 new Float:g_n[MAX_PLAYERS + 1][3];      // wall normal, toward the player
 new Float:g_cell[MAX_PLAYERS + 1];
 new Float:g_last_shot[MAX_PLAYERS + 1];
+new g_reading[MAX_PLAYERS + 1][96];     // the HUD text of the latest reading, "" when there is none
+new Float:g_resend_at[MAX_PLAYERS + 1];
+new bool:g_hud_flip[MAX_PLAYERS + 1];
 new g_dots[MAX_PLAYERS + 1];
 new Float:g_dot[MAX_PLAYERS + 1][MAX_DOTS][2]; // (column, row) in canvas cells
 
@@ -61,7 +70,7 @@ public plugin_init()
 	g_cvar_model = create_cvar("mnist_model", "neural/mnist.safetensors", FCVAR_NONE, "Model file under the AMX Mod X data directory");
 	g_cvar_cell = create_cvar("mnist_cell", "4.0", FCVAR_NONE, "World units per canvas cell (the canvas is 28 cells wide)", true, 2.0, true, 8.0);
 	g_cvar_mode = create_cvar("mnist_mode", "0", FCVAR_NONE, "0: bullet impacts, 1: exact crosshair point", true, 0.0, true, 1.0);
-	g_cvar_live = create_cvar("mnist_live", "1", FCVAR_NONE, "Show the top 3 on the HUD after every shot", true, 0.0, true, 1.0);
+	g_cvar_live = create_cvar("mnist_live", "1", FCVAR_NONE, "Live top 3 on the HUD and the server console while drawing", true, 0.0, true, 1.0);
 	g_cvar_debug = create_cvar("mnist_debug", "0", FCVAR_NONE, "Print every shot's canvas position", true, 0.0, true, 1.0);
 	register_clcmd("say", "CmdSay");
 	register_clcmd("say_team", "CmdSay");
@@ -100,7 +109,9 @@ public plugin_cfg()
 public client_disconnected(id)
 {
 	g_open[id] = false;
+	g_reading[id][0] = EOS;
 	remove_task(TASK_FRAME + id);
+	remove_task(TASK_READ + id);
 }
 
 // ---------- commands ----------
@@ -238,6 +249,7 @@ bool:open_canvas(id)
 	}
 	g_open[id] = true;
 	g_dots[id] = 0;
+	g_reading[id][0] = EOS;
 	remove_task(TASK_FRAME + id);
 	draw_frame(TASK_FRAME + id);
 	set_task(2.0, "draw_frame", TASK_FRAME + id, _, _, "b");
@@ -253,6 +265,8 @@ canvas_point(id, Float:col, Float:row, Float:p[3])
 clear_canvas(id)
 {
 	g_dots[id] = 0;
+	remove_task(TASK_READ + id);
+	hide_reading(id);
 	if (g_open[id] && is_user_connected(id) && !is_user_bot(id))
 		client_print(id, print_center, "MNIST: canvas cleared");
 }
@@ -261,6 +275,8 @@ close_canvas(id)
 {
 	g_open[id] = false;
 	remove_task(TASK_FRAME + id);
+	remove_task(TASK_READ + id);
+	hide_reading(id);
 }
 
 public draw_frame(task)
@@ -273,6 +289,8 @@ public draw_frame(task)
 	}
 	if (is_user_bot(id))
 		return;
+	if (g_reading[id][0] && get_gametime() >= g_resend_at[id])
+		send_reading(id);
 	new Float:a[3], Float:b[3];
 	new const Float:corners[5][2] = { {0.0, 0.0}, {28.0, 0.0}, {28.0, 28.0}, {0.0, 28.0}, {0.0, 0.0} };
 	for (new k = 0; k < 4; k++)
@@ -335,8 +353,8 @@ add_dot(id, const Float:hit[3])
 	g_dot[id][g_dots[id]][0] = col;
 	g_dot[id][g_dots[id]][1] = row;
 	g_dots[id]++;
-	if (get_pcvar_num(g_cvar_live) && !is_user_bot(id))
-		show_live(id);
+	if (get_pcvar_num(g_cvar_live) && !task_exists(TASK_READ + id))
+		set_task(READ_DELAY, "live_reading", TASK_READ + id);
 }
 
 // ---------- recognition ----------
@@ -415,15 +433,48 @@ top3(best[3])
 	}
 }
 
-show_live(id)
+// one reading after a burst of shots: the top 3 to the server console and, for a human, to the HUD
+public live_reading(task)
 {
-	if (classify(id) < 0)
+	new id = task - TASK_READ;
+	if (!g_open[id] || !is_user_connected(id) || classify(id) < 0)
 		return;
-	new best[3];
+	new best[3], name[32], line[160];
 	top3(best);
-	set_hudmessage(80, 255, 120, -1.0, 0.72, 0, 0.0, 1.5, 0.0, 0.3, 3);
-	show_hudmessage(id, "MNIST  %d (%d%%)   %d (%d%%)   %d (%d%%)^n%d shots", best[0], percent(best[0]), best[1], percent(best[1]),
-		best[2], percent(best[2]), g_dots[id]);
+	get_user_name(id, name, charsmax(name));
+	format_top3(best, line, charsmax(line));
+	server_print("[MNIST] %s PREDICTED: %s | %d shots", name, line, g_dots[id]);
+	if (is_user_bot(id))
+		return;
+	formatex(g_reading[id], charsmax(g_reading[]), "MNIST  %d (%d%%)   %d (%d%%)   %d (%d%%)^n%d shots", best[0], percent(best[0]),
+		best[1], percent(best[1]), best[2], percent(best[2]), g_dots[id]);
+	send_reading(id);
+}
+
+format_top3(const best[3], line[], len)
+{
+	formatex(line, len, "%d (%.1f%%), %d (%.1f%%), %d (%.1f%%)", best[0], g_probs[best[0]] * 100.0, best[1],
+		g_probs[best[1]] * 100.0, best[2], g_probs[best[2]] * 100.0);
+}
+
+// Auto channel, same x/y: the new message replaces the old one with a fresh timer (a fixed channel keeps the first
+// send's timer and blinks). The client drops a text equal to the one on screen, so a resend toggles a trailing space.
+send_reading(id)
+{
+	g_hud_flip[id] = !g_hud_flip[id];
+	set_hudmessage(80, 255, 120, -1.0, HUD_Y, 0, 0.0, HUD_HOLD, 0.0, 0.3, -1);
+	show_hudmessage(id, "%s%s", g_reading[id], g_hud_flip[id] ? " " : "");
+	g_resend_at[id] = get_gametime() + HUD_RESEND;
+}
+
+// the client ignores an empty message: a blank one at the same x/y replaces the reading
+hide_reading(id)
+{
+	if (!g_reading[id][0] || !is_user_connected(id))
+		return;
+	g_reading[id][0] = EOS;
+	set_hudmessage(80, 255, 120, -1.0, HUD_Y, 0, 0.0, 0.1, 0.0, 0.0, -1);
+	show_hudmessage(id, " ");
 }
 
 percent(c) { return floatround(g_probs[c] * 100.0); }
@@ -436,13 +487,15 @@ announce(id)
 	{
 		if (is_user_connected(id) && !is_user_bot(id))
 			client_print(id, print_chat, "[MNIST] Draw at least 3 shots inside the frame first.");
-		server_print("MNIST guess id=%d digit=-1 dots=%d", id, g_dots[id]);
+		server_print("[MNIST] #%d ANSWER: none (%d shots, needs at least 3)", id, g_dots[id]);
 		return -1;
 	}
-	new name[32];
+	new name[32], best[3], line[160];
 	get_user_name(id, name, charsmax(name));
+	top3(best);
+	format_top3(best, line, charsmax(line));
 	client_print(0, print_chat, "[MNIST] %s drew a %d (%d%% sure).", name, digit, percent(digit));
-	server_print("MNIST guess id=%d digit=%d conf=%d dots=%d", id, digit, percent(digit), g_dots[id]);
+	server_print("[MNIST] %s ANSWER: %d | PREDICTED: %s | %d shots", name, digit, line, g_dots[id]);
 	return digit;
 }
 
