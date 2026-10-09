@@ -8,7 +8,7 @@
 // cvars: mnist_model "neural/mnist.safetensors" (under the data dir), mnist_cell 4.0 (units per canvas cell),
 //        mnist_mode 0 (0 = bullet impacts, where the decals are; 1 = exact crosshair point, ignores spread),
 //        mnist_live 1 (HUD after every shot), mnist_debug 0 (1: print why each shot is kept or dropped).
-// Admin/test: mnist_open <id>, mnist_guess <id>, mnist_clear <id>; public mnist_api_* functions for callfunc.
+// Admin/test: mnist_open <id>, mnist_guess <id>, mnist_clear <id>, mnist_status; public mnist_api_* functions for callfunc.
 //
 // The renderer below (render_canvas) is the one examples/mnist_wall/train.py trains on: keep them identical.
 // Needs the neural-amx module (https://github.com/octaviusp/neural-amx). Optional config: <configsdir>/neural-mnist.cfg.
@@ -68,6 +68,7 @@ public plugin_init()
 	register_concmd("mnist_open", "CmdAdmin", ADMIN_RCON, "<player id> - open a canvas where the player looks");
 	register_concmd("mnist_guess", "CmdAdmin", ADMIN_RCON, "<player id> - print the network's answer");
 	register_concmd("mnist_clear", "CmdAdmin", ADMIN_RCON, "<player id> - erase the drawing");
+	register_concmd("mnist_status", "CmdStatus", ADMIN_RCON, "- print the loaded model");
 	RegisterHam(Ham_TraceAttack, "worldspawn", "OnTraceAttack", 1);
 	RegisterHam(Ham_TraceAttack, "func_wall", "OnTraceAttack", 1);
 }
@@ -142,6 +143,23 @@ public CmdAdmin(id, level, cid)
 		announce(player);
 	else
 		clear_canvas(player);
+	return PLUGIN_HANDLED;
+}
+
+public CmdStatus(id, level, cid)
+{
+	if (!cmd_access(id, level, cid, 1))
+		return PLUGIN_HANDLED;
+	if (g_model == Invalid_Neural)
+	{
+		new file[128];
+		get_pcvar_string(g_cvar_model, file, charsmax(file));
+		console_print(id, "[MNIST] model not loaded (%s)", file);
+		return PLUGIN_HANDLED;
+	}
+	new info[256];
+	neural_info(g_model, info, charsmax(info));
+	console_print(id, "[MNIST] %s", info);
 	return PLUGIN_HANDLED;
 }
 

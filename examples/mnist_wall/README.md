@@ -39,7 +39,7 @@ Copy `mnist.safetensors` (or your own `build/mnist/mnist.safetensors`) to `addon
 | `mnist_live` | `1` | HUD top 3 after every shot |
 | `mnist_debug` | `0` | print every shot's canvas position and whether it was kept |
 
-Admin/test commands: `mnist_open <id>`, `mnist_guess <id>`, `mnist_clear <id>`; other plugins can call the public
+Admin/test commands: `mnist_open <id>`, `mnist_guess <id>`, `mnist_clear <id>`, `mnist_status` (the loaded model); other plugins can call the public
 functions `mnist_api_open/clear/close/guess/dots(id)` with `callfunc`.
 
 ## Measured
